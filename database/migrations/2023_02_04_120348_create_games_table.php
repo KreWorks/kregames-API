@@ -15,8 +15,13 @@ return new class extends Migration
     {
         Schema::create('games', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->id();
             $table->timestamps();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->date('publis_date');
+            // user id 
+            //jam id
+            $table->bool('visible');
         });
     }
 
