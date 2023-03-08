@@ -18,10 +18,14 @@ return new class extends Migration
             $table->timestamps();
             $table->string('name');
             $table->string('slug')->unique();
-            $table->date('publis_date');
-            // user id 
+            $table->date('publish_date');
+            $table->uuid('user_id');
+            $table->foreign('user_id')
+                ->references('id')->on('users')
+                ->onUpdate('cascade')
+                ->onDelete('cascade');
             //jam id
-            $table->bool('visible');
+            $table->boolean('visible');
         });
     }
 
@@ -32,6 +36,8 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('games');
+        Schema::dropIfExists('games', function (Blueprint $table) {
+            $table->dropForeign('games_user_id_foreign');
+        });
     }
 };
