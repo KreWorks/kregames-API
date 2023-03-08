@@ -2,7 +2,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\Cms\AuthController;
+use App\Http\Controllers\Cms\UserController;
 use App\Http\Controllers\TodoController;
 
 //Original route version with this tutorial 
@@ -22,7 +23,7 @@ Route::controller(TodoController::class)->group(function () {
     Route::delete('todo/{id}', 'destroy');
 })->middleware('api'); 
 // I think better version 
-Route::post('login', [AuthController::class, 'authenticate']);
+//Route::post('login', [AuthController::class, 'authenticate']);
 //Route::post('register', [ApiController::class, 'register']);
 
 /**
@@ -32,7 +33,7 @@ Route::post('login', [AuthController::class, 'authenticate']);
 
 
 Route::prefix('cms')->middleware('api')->group(function() {
-    Route::get('logout', [AuthController::class, 'logout']);
+    Route::resource('user', UserController::class);
     /*Route::get('get_user', [ApiController::class, 'get_user']);
     Route::get('products', [ProductController::class, 'index']);
     Route::get('products/{id}', [ProductController::class, 'show']);
