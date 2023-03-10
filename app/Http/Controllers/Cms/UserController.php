@@ -31,13 +31,20 @@ class UserController extends Controller
     }
 
     /**
-     * Show the form for creating a new resource.
+     * Return a form format for creating a new resource.
      *
      * @return \Illuminate\Http\JsonResponse
      */
     public function create()
     {
-        //
+        // Check if laravel has a form helper 
+        return respone()->json([
+            'name' => ['type' => 'text', 'label' => 'label.name'],
+            'email' => ['type' => 'text', 'label' => 'label.email'],
+            'username' => ['type' => 'text', 'label' => 'label.username'],
+            'password' => ['type' => 'password', 'label' => 'label.password'],
+            'password_confirm' => ['type' => 'password', 'label' => 'label.password_confirm']
+        ]);
     }
 
     /**
@@ -48,7 +55,22 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $error = [];
+        if (!$request->has('name')) {
+            $error[] = 'A név megadása kötelező.';
+        }
+        if (!$request->has('email')) {
+            $error[] = 'Az email megadása kötelező.';
+        }
+        if (!$request->has('username')) {
+            $error[] = 'A felhasználónév megadása kötelező.';
+        }
+        if (!$request->has('passowrd') && !$request->has('password_confirm')) {
+            $error[] = 'A jelszó megadása kötelező.';
+        }
+        if ($request->get('passord') != $request->get('password_confirm')) {
+            $error[] = 'A két jelszó nem egyezik.';
+        }
     }
 
     /**
