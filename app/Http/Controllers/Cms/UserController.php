@@ -55,22 +55,25 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $error = [];
-        if (!$request->has('name')) {
-            $error[] = 'A név megadása kötelező.';
-        }
-        if (!$request->has('email')) {
-            $error[] = 'Az email megadása kötelező.';
-        }
-        if (!$request->has('username')) {
-            $error[] = 'A felhasználónév megadása kötelező.';
-        }
-        if (!$request->has('passowrd') && !$request->has('password_confirm')) {
-            $error[] = 'A jelszó megadása kötelező.';
-        }
-        if ($request->get('passord') != $request->get('password_confirm')) {
-            $error[] = 'A két jelszó nem egyezik.';
-        }
+        $request->validate([
+            'name' => 'required|string|max:200',
+            'email' => 'required|string|email|max:200|unique:users',
+            'username' => 'required|string|max:100|unique:users',
+            'password' => 'required|string|min:6',
+            'password_confirm' => 'required|string|same:password'
+        ]);
+        
+        $user = User::create([
+            'name' => $request->name,
+            'username' => $request->username,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'user' => $user
+        ]);
     }
 
     /**
@@ -88,17 +91,6 @@ class UserController extends Controller
             'count' => count($user),
             'data' => $user,
         ]);
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\JsonResponse
-     */
-    public function edit($id)
-    {
-        //
     }
 
     /**
