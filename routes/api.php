@@ -12,12 +12,13 @@ Route::controller(AuthController::class)->group(function () {
     Route::post('register', 'register')->name('register');
     Route::post('logout', 'logout')->name("logout");
     Route::post('refresh', 'refresh')->name("refresh");
-})->middleware('api');
+})->middleware(['api', 'cors']);
 
 /** Routes for CMS actions */
-Route::prefix('cms')->middleware('api')->group(function() {
-    Route::resource('users', UserController::class)->except(['edit']);
-    Route::resource('games', GameController::class)->except(['edit']);
+Route::prefix('cms')->middleware(['api', 'cors'])->group(function() {
+    Route::resource('users', UserController::class)->except(['create', 'edit' ]);
+    Route::get('users/unique/{key}/{value?}', [UserController::class, 'unique'])->name('users.unique');
+    Route::resource('games', GameController::class)->except(['create', 'edit']);
 });
 
 /**

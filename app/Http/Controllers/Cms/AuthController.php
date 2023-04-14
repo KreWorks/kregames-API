@@ -13,7 +13,7 @@ class AuthController extends Controller
 
     public function __construct()
     {
-        $this->middleware('auth:api', ['except' => ['login','register']]);
+        $this->middleware('auth:api', ['except' => ['login','register', 'refresh']]);
     }
 
     public function login(Request $request)
@@ -27,15 +27,16 @@ class AuthController extends Controller
 
         if (!$token) {
             return response()->json([
-                'status' => 'error',
+                'status' => 401,
                 'message' => 'Unauthorized',
             ], 401);
         }
 
         $user = Auth::user();
         return response()->json([
-                'status' => 'success',
+                'status' => 200,
                 'user' => $user,
+                'message' => 'Login successfully',
                 'authorisation' => [
                     'token' => $token,
                     'type' => 'bearer',
@@ -62,7 +63,7 @@ class AuthController extends Controller
         $token = Auth::login($user);
         return response()->json([
             'status' => 'success',
-            'message' => 'User created successfully',
+            'message' => 'User registered successfully',
             'user' => $user,
             'authorisation' => [
                 'token' => $token,
@@ -75,7 +76,8 @@ class AuthController extends Controller
     {
         Auth::logout();
         return response()->json([
-            'status' => 'success',
+            'status' => 200,
+            'user' => null,
             'message' => 'Successfully logged out',
         ]);
     }
@@ -83,8 +85,9 @@ class AuthController extends Controller
     public function refresh()
     {
         return response()->json([
-            'status' => 'success',
+            'status' => 200,
             'user' => Auth::user(),
+            'message' => 'Refeshed successfully.',
             'authorisation' => [
                 'token' => Auth::refresh(),
                 'type' => 'bearer',
