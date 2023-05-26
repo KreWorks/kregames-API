@@ -4,14 +4,15 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
+use App\Models\Game;
 use App\Models\User;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Game>
  */
-class UserFactory extends Factory
+class GameFactory extends Factory
 {
-    protected $model = User::class;
+    protected $model = Game::class;
     /**
      * Define the model's default state.
      *
@@ -22,11 +23,9 @@ class UserFactory extends Factory
         return [
             'id' => Str::uuid(),
             'name' => fake()->name(),
-            'username' => fake()->username(),
-            'email' => fake()->unique()->safeEmail(),
-            'password' => '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password
+            'slug' => fake()->slug(),
+            'user_id' => User::all()->first()->id,
+            'visible' => true,
         ];
-
     }
-
 }

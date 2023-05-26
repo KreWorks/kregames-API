@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Cms;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 
@@ -49,14 +50,22 @@ class UserController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'name' => 'required|string|max:200',
-            'email' => 'required|string|email|max:200|unique:users',
-            'username' => 'required|string|max:100|unique:users',
-            'password' => 'required|string|min:6',
-            'confirmPassword' => 'required|string|same:password'
-        ]);
-        
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|string|max:200',
+                'email' => 'required|string|email|max:200|unique:users',
+                'username' => 'required|string|max:100|unique:users',
+                'password' => 'required|string|min:6',
+                'confirmPassword' => 'required|string|same:password'
+            ]);
+        } catch(ValidationException $ve) {
+
+            return response()->json([
+                'status' => 400,
+                'error' => $ve->errors()
+            ], 400);
+        }
+
         $user = User::create([
             'name' => $request->name,
             'username' => $request->username,
@@ -98,7 +107,7 @@ class UserController extends Controller
      * Update the specified resource in storage.
      *
      * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
+     * @param  uuid  $id
      * @return \Illuminate\Http\JsonResponse
      */
     public function update(Request $request, $id)
@@ -106,31 +115,53 @@ class UserController extends Controller
         $user = User::find($id);
 
         if ($request->get('password')) {
-            $request->validate([
-                'password' => 'required|string|min:6',
-                'confirmPassword' => 'required|string|same:password'
-            ]);
-
+            try {
+                $request->validate([
+                    'password' => 'required|string|min:6',
+                    'confirmPassword' => 'required|string|same:password'
+                ]);
+            } catch(ValidationException $ve) {
+    
+                return response()->json([
+                    'status' => 400,
+                    'error' => $ve->errors()
+                ], 400);
+            }
+    
             $user->password = Hash::make($request->password);
         }
+        
+        $validationRules = [];
         if ($request->get('email')) {
             $emailValidator =  'required|string|email|max:200';
             if ($request->email != $user->email) {
                 $emailValidator =  'required|string|email|max:200|unique:users';
             }
+            $user->email = $request->email;
+            $validationRules['email'] = $emailValidator;
+        }
+        if($request->get('username')) {
             $usernameValidator = 'required|string|max:100'; 
             if ($request->username != $user->username) {
                 $usernameValidator = 'required|string|max:100|unique:users'; 
             }
-            $request->validate([
-                'name' => 'required|string|max:200',
-                'email' => $emailValidator,
-                'username' => $usernameValidator,
-            ]);
-
-            $user->name = $request->name;
             $user->username = $request->username;
-            $user->email = $request->email;
+            $validationRules['username'] = $usernameValidator;
+
+        }
+        if ($request->get('name')) {
+            $user->name = $request->name;
+            $validationRules['name'] = 'required|string|max:200';
+        }
+
+        try {
+            $request->validate($validationRules);
+        } catch(ValidationException $ve) {
+
+            return response()->json([
+                'status' => 400,
+                'error' => $ve->errors()
+            ], 400);
         }
 
         $user->save();

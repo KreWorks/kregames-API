@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
+use Database\Factories\UserFactory;
+use App\Models\_Base as Base;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -25,6 +27,8 @@ class User extends Authenticatable implements JWTSubject
     }
 
     public $incrementing = false;
+    
+    public $keyType = 'string';
     /**
      * The attributes that are mass assignable.
      *
@@ -46,6 +50,15 @@ class User extends Authenticatable implements JWTSubject
         'password',
     ];
 
+    protected static function factory() 
+    {
+        return UserFactory::new();
+    }
+
+    public function getDeleteStringAttribute()
+    {
+        return $this->name . " (".$this->username.")";
+    }
 
      /**
      * Get the identifier that will be stored in the subject claim of the JWT.

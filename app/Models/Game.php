@@ -2,26 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\_Base as Base;
 
-class Game extends Model
+class Game extends Base
 {
-    use HasFactory;
-
-    /**
-     * We need to create a uuid on create
-     */
-    public static function boot()
-    {
-        parent::boot();
-        
-        static::creating(function ($model) {
-            $model->id = Str::uuid();
-        });
-    }
-
-    public $incrementing = false;
     /**
      * The attributes that are mass assignable.
      *
@@ -40,5 +24,10 @@ class Game extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function getDeleteStringAttribute():string
+    {
+        return $this->name;
     }
 }

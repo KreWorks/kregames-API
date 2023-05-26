@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Cms;
 
 use App\Models\Game;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Controller;
 
 class GameController extends Controller
@@ -47,29 +49,40 @@ class GameController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'name' => 'required|max:255',
-            'slug' => 'required|unique:games|max:255',
-            'published_date' => 'required|date',
-            'user_id' => 'required|exists:users,id',
-            /*'jam_id' => 'required|exists:jams,id',*/
-            'visible' => 'required|boolean',
-        ]);
+        try {
+            $validatedData = $request->validate([
+                'name' => 'required|max:255',
+                'slug' => 'required|unique:games|max:255',
+                'publish_date' => 'required|date',
+                'user_id' => 'required|exists:users,id',
+                /*'jam_id' => 'required|exists:jams,id',*/
+                'visible' => 'required|boolean',
+            ]);
+        } catch(ValidationException $ve) {
 
-
-        $game = Game::create([
-            'name' => $request->name, 
-            'slug' => $request->slug, 
-            'published_date' => $request->published_date,
-            'visible' => $request->visible
-        ]);
-        
-        $game = Game::create($validatedData);
+            return response()->json([
+                'status' => 400,
+                'error' => $ve->errors()
+            ], 400);
+        }
 
         if ($request->input('user_id')) {
             $user = User::find($request->input('user_id'));
-            $user->games()->save($game);
+        } else {
+            return response()->json([
+                'status' => 400,
+                'error' => ['user_id' => "User is missing."]
+            ], 400);
         }
+
+        $game = $user->games()->create([
+            'name' => $request->name, 
+            'slug' => $request->slug, 
+            'publish_date' => $request->publish_date,
+            'visible' => $request->visible ? 1 : 0
+        ]);
+        
+        $user->games()->save($game);
 
         return response()->json([
             'status' => 200,
@@ -115,29 +128,51 @@ class GameController extends Controller
     {
         $game = Game::find($id);
         
-        $validate = [
-            'name' => 'required|max:255',
-            'published_date' => 'required|date',
-            'visible' => 'required|boolean',
-        ];
-        if ($request->slug != $game->slug) {
-            $validate['slug'] = 'required|unique:games|max:255';
+        $validateRules = []; 
+        if ($request->get('name')) {
+            $game->name = $request->name;
+            $validateRules['name'] = 'required|max:255';
+        }
+        if ($request->get('slug')) {
+            $validateRules['slug'] = 'required|max:255'; 
+            if ($game->slug != $request->slug) {
+                $validateRules['slug'] = 'required|unique:games|max:255';
+                $game->slug = $request->slug; 
+            }
+        }
+        if ($request->get('publish_date')) {
+            $game->publish_date = $request->publish_date; 
+            $validateRules['publish_date'] = 'required|date'; 
         }
 
-        $validatedData = $request->validate($validate);
+        if ($request->get('visible') !== null) {
+            $game->visible = $request->visible ? 1 : 0;
+        }
 
-        $game->name = $request->name; 
-        $game->slug = $request->slug;
-        $game->date = $request->date; 
-        $game->user_id = $request->user_id;
-        $game->visible = $request->visible;
+        try {
+            $request->validate($validateRules);
+        } catch(ValidationException $ve) {
+            return response()->json([
+                'status' => 400,
+                'error' => $ve->errors()
+            ], 400);
+        }
+
+        if ($request->input('user_id') && $request->user_id != $game->user->id) {
+            $user = User::find($request->input('user_id'));
+            if ($user) {
+                $game->user($user);
+                //$user->games()->save($game);
+            } else {
+                return response()->json([
+                    'status' => 400,
+                    'error' => ['user_id' => "User is missing."]
+                ], 400);
+            }
+        }
+
 
         $game->save();
-
-        if ($request->input('user_id')) {
-            $user = User::find($request->input('user_id'));
-            $user->games()->save($game);
-        }
 
         return response()->json([
             'status' => 200,
