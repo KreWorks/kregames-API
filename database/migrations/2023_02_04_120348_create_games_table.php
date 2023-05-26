@@ -24,7 +24,6 @@ return new class extends Migration
                 ->references('id')->on('users')
                 ->onUpdate('cascade')
                 ->onDelete('cascade');
-            //jam id
             $table->boolean('visible');
         });
     }

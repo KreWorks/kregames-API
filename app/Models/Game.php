@@ -2,10 +2,32 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\_Base as Base;
 
-class Game extends Model
+class Game extends Base
 {
-    use HasFactory;
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'slug',
+        'publish_date',
+        'visible',
+    ];
+
+    /** 
+     * THe user this game blongs to
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function getDeleteStringAttribute():string
+    {
+        return $this->name;
+    }
 }
