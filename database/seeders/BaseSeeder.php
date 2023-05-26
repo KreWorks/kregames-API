@@ -10,6 +10,7 @@ abstract class BaseSeeder extends Seeder
     protected const DATA_FOLDER = __DIR__.'../dataFiles/'; 
     
     protected $dataFileName;
+    protected $uniqueFieldName;
     
     /**
      * Seed the application's database.
@@ -18,14 +19,19 @@ abstract class BaseSeeder extends Seeder
      */
     public function run()
     {
-        $content = file_get_contents(self::DATA_FOLDER . $dataFileName);
+        $contents = file_get_contents(self::DATA_FOLDER . $dataFileName);
 
-        // \App\Models\User::factory(10)->create();
+        $this->command->info('Start processing data');
 
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        foreach($contents as $content) {
+            if ($entity = $this->hasEntity($content[$uniqueFieldName]) !== false) {
+                $this->updateEntity($entity, $content);
+            } else {
+                $this->insertEntity($content);
+            }
+        }
+
+        $this->command->info('Finished data processing');
     }
 
     protected abstract function hasEntity($uniqueString);

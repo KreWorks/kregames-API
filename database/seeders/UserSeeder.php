@@ -4,38 +4,15 @@ namespace Database\Seeders;
 
 class UserSeeder extends BaseSeeder
 {
-    protected const DATA_FOLDER = __DIR__.'../dataFiles/'; 
-    
     protected $dataFileName;
     protected $uniqueFieldName;
-    
-    /**
-     * Seed the application's database.
-     *
-     * @return void
-     */
-    public function run()
+
+    public function __construct()
     {
-        $contents = file_get_contents(self::DATA_FOLDER . $dataFileName);
-
-        $this->command->info('Start processing data');
-
-        foreach($contents as $content) {
-            if ($entity = $this->hasEntity($content[$uniqueFieldName]) !== false) {
-                $this->updateEntity($entity, $content);
-            } else {
-                $this->insertEntity($content);
-            }
-        }
-
-        $this->command->info('Finished data processing');
-        // \App\Models\User::factory(10)->create();
-
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        $this->dataFileName = 'user.json';
+        $this->uniqueFieldName = 'username';
     }
+    
 
     protected function hasEntity($uniqueString)
     {
@@ -46,11 +23,26 @@ class UserSeeder extends BaseSeeder
 
     protected function insertEntity($datas)
     {
-        
+        $user = User::create([
+            'name' => $datas['name'],
+            'username' => $datas['username'],
+            'email' => $datas['email'],
+            'password' => Hash::make('jelszo123'),
+        ]);
+
+        return $user;
     }
 
     protected function updateEntity($entity, $datas)
     {
+        $entity->name = $datas['name'];
+        $entity->username = $datas['username'];
+        $entity->email = $datas['email'];
+        $entity->password = Hash::make('jelszo123');
 
+        $entity->save();
+
+        return $entity;
     }
+       
 }
