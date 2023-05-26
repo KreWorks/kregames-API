@@ -15,8 +15,16 @@ return new class extends Migration
     {
         Schema::create('games', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->id();
             $table->timestamps();
+            $table->string('name');
+            $table->string('slug')->unique();
+            $table->date('publish_date');
+            $table->uuid('user_id');
+            $table->foreign('user_id')
+                ->references('id')->on('users')
+                ->onUpdate('cascade')
+                ->onDelete('cascade');
+            $table->boolean('visible');
         });
     }
 
@@ -27,6 +35,8 @@ return new class extends Migration
      */
     public function down()
     {
-        Schema::dropIfExists('games');
+        Schema::dropIfExists('games', function (Blueprint $table) {
+            $table->dropForeign('games_user_id_foreign');
+        });
     }
 };

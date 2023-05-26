@@ -2,16 +2,33 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
+use Database\Factories\UserFactory;
+use App\Models\_Base as Base;
 
 class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, Notifiable;
 
+    /**
+     * We need to create a uuid on create
+     */
+    public static function boot()
+    {
+        parent::boot();
+        
+        static::creating(function ($model) {
+            $model->id = Str::uuid();
+        });
+    }
+
+    public $incrementing = false;
+    
+    public $keyType = 'string';
     /**
      * The attributes that are mass assignable.
      *
@@ -19,6 +36,7 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
     ];
@@ -30,17 +48,17 @@ class User extends Authenticatable implements JWTSubject
      */
     protected $hidden = [
         'password',
-        'remember_token',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-    ];
+    protected static function factory() 
+    {
+        return UserFactory::new();
+    }
+
+    public function getDeleteStringAttribute()
+    {
+        return $this->name . " (".$this->username.")";
+    }
 
      /**
      * Get the identifier that will be stored in the subject claim of the JWT.
@@ -60,5 +78,13 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [];
+    }
+
+    /**
+     * The games related to this user
+     */
+    public function games()
+    {
+        return $this->hasMany(Game::class);
     }
 }

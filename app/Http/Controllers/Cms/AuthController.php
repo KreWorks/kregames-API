@@ -5,14 +5,14 @@ namespace App\Http\Controllers\Cms;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Controllers\Controller;
 use App\Models\User;
 
 class AuthController extends Controller
 {
-
     public function __construct()
     {
-        $this->middleware('auth:api', ['except' => ['login','register']]);
+        $this->middleware('auth:api', ['except' => ['login','register', 'refresh']]);
     }
 
     public function login(Request $request)
@@ -26,15 +26,16 @@ class AuthController extends Controller
 
         if (!$token) {
             return response()->json([
-                'status' => 'error',
+                'status' => 401,
                 'message' => 'Unauthorized',
             ], 401);
         }
 
         $user = Auth::user();
         return response()->json([
-                'status' => 'success',
+                'status' => 200,
                 'user' => $user,
+                'message' => 'Login successfully',
                 'authorisation' => [
                     'token' => $token,
                     'type' => 'bearer',
@@ -47,11 +48,13 @@ class AuthController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
+            'username' => 'required|string|max:100|unique:users',
             'password' => 'required|string|min:6',
         ]);
         
         $user = User::create([
             'name' => $request->name,
+            'username' => $request->username,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
@@ -59,7 +62,7 @@ class AuthController extends Controller
         $token = Auth::login($user);
         return response()->json([
             'status' => 'success',
-            'message' => 'User created successfully',
+            'message' => 'User registered successfully',
             'user' => $user,
             'authorisation' => [
                 'token' => $token,
@@ -72,7 +75,8 @@ class AuthController extends Controller
     {
         Auth::logout();
         return response()->json([
-            'status' => 'success',
+            'status' => 200,
+            'user' => null,
             'message' => 'Successfully logged out',
         ]);
     }
@@ -80,8 +84,9 @@ class AuthController extends Controller
     public function refresh()
     {
         return response()->json([
-            'status' => 'success',
+            'status' => 200,
             'user' => Auth::user(),
+            'message' => 'Refeshed successfully.',
             'authorisation' => [
                 'token' => Auth::refresh(),
                 'type' => 'bearer',
