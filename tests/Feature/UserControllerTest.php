@@ -11,6 +11,84 @@ use App\Models\User;
 class UserControllerTest extends TestCase
 {
     /**
+     * UserContrller - User List 
+     * Success
+     */
+    public function testUserList() 
+    {
+        $token = $this->getApiToken();
+
+        for($i = 1; $i <= 5; $i++) {
+            $user = User::factory(User::class)->create([
+                'email' => 'list'.$i.'@mail.com',
+                'name' => "List User ".$i,
+                'username' => 'listuser'.$i,
+                'password' => Hash::make('password'),
+            ]);
+        }
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->get('/api/cms/users');
+
+        $response->assertJsonStructure([
+            'meta' => ['count', 'entityType', 'headers'],
+        ]);
+        $this->validateSuccessResponse($response, 'users', 6);
+    }
+
+    /**
+     * UserController - User show
+     * Success
+     */
+    public function testUserShow()
+    {
+        $token = $this->getApiToken();
+
+        $user = User::factory(User::class)->create([
+            'email' => 'showuser1@mail.com',
+            'name' => "Show User 1",
+            'username' => 'listuser1',
+            'password' => Hash::make('password'),
+        ]);
+
+        $userId = $user->id->ToString();
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->get('/api/cms/users/'.$userId);
+
+        $response->assertJsonPath('data.username', 'listuser1');
+        $response->assertJsonPath('data.id', $userId);
+        $this->validateSuccessResponse($response, 'users', 1);
+    }
+
+    /**
+     * UserController - User show
+     * Error - user not found
+     */
+    public function testUserShowNotFound()
+    {
+        $token = $this->getApiToken();
+
+        $user = User::factory(User::class)->create([
+            'email' => 'showuser2@mail.com',
+            'name' => "Show User 2",
+            'username' => 'listuser2',
+            'password' => Hash::make('password'),
+        ]);
+
+        $userId = $user->id->ToString();
+        $userId = substr($userId, 0, -2)."bc";
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->get('/api/cms/users/'.$userId);
+
+        $this->validateErrorResponse($response, ['user'], 404);
+    }
+
+    /**
      * Create User 
      *
      * @return void
@@ -29,8 +107,14 @@ class UserControllerTest extends TestCase
             'confirmPassword' => 'password'
         ]);
 
-        $response->assertJsonPath('data.username','fancyusername');
         $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'status',
+            'meta' => ['count', 'entityType'],
+            'data'
+        ]);
+        $response->assertJsonPath('meta.count',1);
+        $response->assertJsonPath('data.username','fancyusername');
     }
 
     /**
