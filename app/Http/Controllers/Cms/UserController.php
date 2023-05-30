@@ -93,6 +93,13 @@ class UserController extends Controller
     {
         $user = User::find($id);
         
+        if (!$user) {
+            return response()->json([
+                'status' => 404,
+                'error' => ['user' => 'User not found.']
+            ], 404);
+        }
+        
         return response()->json([
             'status' => 200,
             'meta' => [
@@ -113,6 +120,13 @@ class UserController extends Controller
     public function update(Request $request, $id)
     {
         $user = User::find($id);
+
+        if (!$user) {
+            return response()->json([
+                'status' => 404,
+                'error' => ['user' => 'User not found.']
+            ], 404);
+        }
 
         if ($request->get('password')) {
             try {
@@ -168,6 +182,10 @@ class UserController extends Controller
 
         return response()->json([
             'status' => 200,
+            'meta' => [
+                'count' => 1,
+                'entityType' => 'users',
+            ],
             'data' => $user
         ]);
     }
@@ -186,8 +204,10 @@ class UserController extends Controller
 
         return response()->json([
             'status' => 200,
-            'message' => 'User was deleted.',
-            'meta' => [],
+            'meta' => [
+                'count' => 1,
+                'entityType' => 'users',
+            ],
             'data' => null
         ]);
     }
@@ -211,7 +231,7 @@ class UserController extends Controller
         return response()->json([
             'status' => 200,
             'is_unique' => false,
-            'messqge' => 'Something went wrong'
+            'message' => 'Something went wrong'
         ]);
     }
 }
