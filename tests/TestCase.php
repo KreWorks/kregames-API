@@ -33,4 +33,32 @@ abstract class TestCase extends BaseTestCase
 
         return $loginResponse->getData()->authorisation->token;
     }
+
+    protected function validateErrorResponse($response, $errorLabels, $status = 400) 
+    {
+        $response->assertStatus($status);
+        if ($errorLabels) {
+            $response->assertJsonStructure([
+                'status',
+                'error' => $errorLabels
+            ]);
+        } else {
+            $response->assertJsonStructure([
+                'status',
+                'error'
+            ]);
+        }
+    }
+
+    protected function validateSuccessResponse($response, $entityType, $entityCount) 
+    {
+        $response->assertStatus(200);
+        $response->assertJsonStructure([
+            'status',
+            'meta' => ['count', 'entityType'],
+            'data'
+        ]);
+        $response->assertJsonPath('meta.entityType', $entityType);
+        $response->assertJsonPath('meta.count', $entityCount);
+    }
 }
