@@ -79,7 +79,7 @@ class UserControllerTest extends TestCase
         ]);
 
         $userId = $user->id->ToString();
-        $userId = substr($userId, 0, -2)."bc";
+        $userId = substr($userId, 0, -5)."sdfbc";
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer '. $token,

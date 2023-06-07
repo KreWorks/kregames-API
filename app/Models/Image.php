@@ -3,26 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use App\Models\_Base as Base;
+use App\Enums\ImageTypeEnum;
 
-class Game extends Model
+class Image extends Base
 {
     use HasFactory;
-
-    public const ICON = 'icon'; 
-    public const SCREENSHOT = 'screenshot';
-
-    /**
-     * We need to create a uuid on create
-     */
-    public static function boot()
-    {
-        parent::boot();
-        
-        static::creating(function ($model) {
-            $model->id = Str::uuid();
-        });
-    }
 
     public $incrementing = false;
     /**
@@ -36,6 +22,10 @@ class Game extends Model
         'title',
         'imageable_type',
         'imageable_id'
+    ];
+
+    protected $casts = [
+        'type' => ImageTypeEnum::class
     ];
 
     public static $morphs = [
@@ -58,14 +48,6 @@ class Game extends Model
         return $imageables;
     }
 
-    public static function getImageTypes()
-    {
-        return [
-            self::ICON => 'icon',
-            self::SCREENSHOT => 'screenshot'
-        ];
-    }
-
     /**
      * Get the parent imageable model (jam or game).
      */
@@ -74,24 +56,15 @@ class Game extends Model
         return $this->morphTo();
     }
 
-    public static function getImageTypeList()
-    {
-        return [
-            Image::ICON => 'Icon', 
-            Image::SCREENSHOT => 'ScreenShot',
-        ];
-    }
-
     public static function getMorphList()
     {
         return [
             Game::class => 'játék', 
-            Jam::class => 'jam',
             User::class => 'felhasználó'
         ];
     }
 
-    public function getDeleteStringAttribute()
+    public function getDeleteStringAttribute(): string
     {
         return $this->path . " (ID: ".$this->id.")";
     }
