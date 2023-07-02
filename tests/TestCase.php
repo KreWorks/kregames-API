@@ -2,13 +2,14 @@
 
 namespace Tests;
 
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
 
 abstract class TestCase extends BaseTestCase
 {
-    use CreatesApplication;
+    use CreatesApplication, DatabaseTransactions;
 
     /**
      * Get an api JWT token
@@ -17,18 +18,18 @@ abstract class TestCase extends BaseTestCase
      */
     protected function getApiToken()
     {
-        $user = User::where('email','test@mail.com') -> first();
+        $user = User::where('email','admin@admin.hu') -> first();
         if (!$user) {
             $user = User::factory(User::class)->create([
-                'email' => 'test@mail.com',
-                'username' => 'testuser',
-                'password' => Hash::make('password'),
+                'email' => 'admin@admin.hu',
+                'username' => 'admin',
+                'password' => Hash::make('4dm1n'),
             ]);
         }
 
         $loginResponse = $this->post('/api/login', [
-            'email' => 'test@mail.com',
-            'password' => 'password',
+            'email' => 'admin@admin.hu',
+            'password' => '4dm1n',
         ]);
 
         return $loginResponse->getData()->authorisation->token;

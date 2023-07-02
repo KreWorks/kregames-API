@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers\Cms;
 
-use App\Models\Game;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Controller;
+use App\Traits\ImageableTrait;
+use App\Enums\ImageTypeEnum;
+use App\Models\User;
+use App\Models\Game;
+use App\Models\Image;
 
 class GameController extends Controller
 {
+    use ImageableTrait;
 
     public function __construct()
     {
@@ -25,20 +29,19 @@ class GameController extends Controller
     {
         $games = Game::orderBy('created_at')->get();
         
-        return response()->json([
-            'status' => 200,
-            'meta' => [
-                'count' => count($games),
-                'entityType' => 'games',
-                'headers' => [
-                    [ 'entityKey' => 'name', 'type' => 'text', 'value' => 'Cím'], 
-                    [ 'entityKey' => 'slug', 'type' => 'text', 'value' => 'Slug'], 
-                    [ 'entityKey' => 'publish_date', 'type' => 'date',  'value' => 'Megjelenés dátuma'],
-                    [ 'entityKey' => 'visible', 'type' => 'visible', 'value' => 'Láthatóság']
-                ]
-            ],
-            'data' => $games,
-        ]);
+        return response()->json($this->handleListResponseSuccess(
+            count($games), 
+            'games', 
+            $games, 
+            [
+                [ 'entityKey' => 'name', 'type' => 'text', 'value' => 'Cím'], 
+                [ 'entityKey' => 'slug', 'type' => 'text', 'value' => 'Slug'], 
+                [ 'entityKey' => 'publish_date', 'type' => 'date',  'value' => 'Megjelenés dátuma'],
+                [ 'entityKey' => 'visible', 'type' => 'visible', 'value' => 'Láthatóság']
+            ], 
+            'id', 
+            'name'
+        ));
     }
 
     /**
@@ -55,24 +58,19 @@ class GameController extends Controller
                 'slug' => 'required|unique:games|max:255',
                 'publish_date' => 'required|date',
                 'user_id' => 'required|exists:users,id',
-                /*'jam_id' => 'required|exists:jams,id',*/
                 'visible' => 'required|boolean',
+                'icon' => 'required|file'
             ]);
         } catch(ValidationException $ve) {
 
-            return response()->json([
-                'status' => 400,
-                'error' => $ve->errors()
-            ], 400);
+            return response()->json($this->handleResponseError(400, $ve->errors()), 400);
         }
 
-        if ($request->input('user_id')) {
-            $user = User::find($request->input('user_id'));
-        } else {
-            return response()->json([
-                'status' => 400,
-                'error' => ['user_id' => "User is missing."]
-            ], 400);
+        $user = User::find($request->input('user_id')); 
+        $resp = $this->handleEntityExist($user, 'users', 'user');
+        if ($resp['status'] != 200 ) {
+            
+            return response()->json($resp, $resp['status']);
         }
 
         $game = $user->games()->create([
@@ -82,18 +80,20 @@ class GameController extends Controller
             'visible' => $request->visible ? 1 : 0
         ]);
         
+        
+        $path = $this->handleImage($request, $game, 'icon');
+        
+        $image = Image::create([
+            'type' => ImageTypeEnum::ICON,
+            'imageabble_type' => get_class($game),
+            'imageable_id' => $game->id,
+            'path' => $path,
+            'title' => $game->slug." icon",
+        ]);
+        
         $user->games()->save($game);
 
-        return response()->json([
-            'status' => 200,
-            'message' => 'Sikeres mentés',
-            'meta' => [
-                'count' => 1,
-                'entityType' => 'games',
-            ],
-            'data' => $game
-        ]);
-
+        return response()->json($this->handleResponseSuccess(1, 'games', $game));
     }
 
     /**
@@ -105,15 +105,10 @@ class GameController extends Controller
     public function show($id)
     {
         $game = Game::find($id);
-        
-        return response()->json([
-            'status' => 200,
-            'meta' => [
-                'count' => 1,
-                'entityType' => 'games',
-            ],
-            'data' => $games,
-        ]);
+
+        $response = $this->handleEntityExist($game, 'games', 'game');
+
+        return response()->json($response, $response['status']);
     }
 
 
@@ -127,6 +122,11 @@ class GameController extends Controller
     public function update(Request $request, $id)
     {
         $game = Game::find($id);
+        $resp = $this->handleEntityExist($game, 'games', 'game');
+        if ($resp['status'] != 200 ) {
+            
+            return response()->json($resp, $resp['status']);
+        } 
         
         $validateRules = []; 
         if ($request->get('name')) {
@@ -149,36 +149,42 @@ class GameController extends Controller
             $game->visible = $request->visible ? 1 : 0;
         }
 
+        if ($request->has('icon') && $request->hasFile('icon')) {
+            $validationRules['icon'] = "required|file";
+
+            $path = $this->handleImage($request, $game, 'icon');
+        
+            $image = Image::create([
+                'type' => ImageTypeEnum::ICON,
+                'imageabble_type' => get_class($game),
+                'imageable_id' => $game->id,
+                'path' => $path,
+                'title' => $game->slug." icon",
+            ]);
+        }
+
         try {
             $request->validate($validateRules);
         } catch(ValidationException $ve) {
-            return response()->json([
-                'status' => 400,
-                'error' => $ve->errors()
-            ], 400);
+            
+            return response()->json($this->handleResponseError(400, $ve->errors()), 400);
         }
 
         if ($request->input('user_id') && $request->user_id != $game->user->id) {
             $user = User::find($request->input('user_id'));
-            if ($user) {
-                $game->user($user);
-                //$user->games()->save($game);
+            
+            $resp = $this->handleEntityExist($user, 'users', 'user');
+            if ($resp['status'] != 200 ) {
+                
+                return response()->json($resp, $resp['status']);
             } else {
-                return response()->json([
-                    'status' => 400,
-                    'error' => ['user_id' => "User is missing."]
-                ], 400);
+                $game->user($user);
             }
         }
 
-
         $game->save();
 
-        return response()->json([
-            'status' => 200,
-            'message' => 'Sikeres frissítés',
-            'data' => $game
-        ]);
+        return response()->json($this->handleResponseSuccess(1, 'games', $game));
     }
 
     /**
@@ -190,14 +196,14 @@ class GameController extends Controller
     public function destroy($id)
     {
         $game = Game::find($id);
+        $resp = $this->handleEntityExist($game, 'games', 'game');
+        if ($resp['status'] != 200 ) {
+            
+            return response()->json($resp, $resp['status']);
+        } 
 
         $game->delete();
 
-        return response()->json([
-            'status' => 200,
-            'message' => 'Game was deleted.',
-            'meta' => [],
-            'data' => null
-        ]);
+        return response()->json($this->handleResponseSuccess(0, 'games', null));
     }
 }

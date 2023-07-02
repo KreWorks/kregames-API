@@ -30,10 +30,8 @@ class AuthController extends Controller
                 'password' => 'required|string|min:6',
             ]);
         } catch(ValidationException $ve) {
-            return response()->json([
-                'status' => 400,
-                'error' => $ve->errors()
-            ], 400);
+
+            return response()->json($this->handleResponseError(400, $ve->errors()), 400);
         }
 
         $user = User::create([
@@ -43,15 +41,7 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-
-        return response()->json([
-            'status' => 200,
-            'meta' => [
-                'count' => 1,
-                'entityType' => 'users',
-            ],
-            'data' => $user,
-        ]);
+        return response()->json($this->handleResponseSuccess(1, 'users', $user));
     }
 
     public function login(Request $request)
@@ -62,36 +52,21 @@ class AuthController extends Controller
                 'password' => 'required|string',
             ]);
         } catch(ValidationException $ve) {
-            return response()->json([
-                'status' => 400,
-                'error' => $ve->errors()
-            ], 400);
+
+            return response()->json($this->handleResponseError(400, $ve->errors()), 400);
         }
 
         $credentials = $request->only('email', 'password');
         $token = Auth::attempt($credentials);
 
         if (!$token) {
-            return response()->json([
-                'status' => 401,
-                'error' => 'Unauthorized',
-            ], 401);
+
+            return response()->json($this->handleResponseError(401, ['token' => 'Unauthorized']), 401);
         }
 
         $user = Auth::user();
     
-        return response()->json([
-            'status' => 200,
-            'meta' => [
-                'count' => 1,
-                'entityType' => 'users',
-            ],
-            'data' => $user,
-            'authorisation' => [
-                'token' => $token,
-                'type' => 'bearer',
-            ]
-        ]);
+        return response()->json($this->handleResponseSuccess(1, 'users', $user, $token));
     }
 
 
@@ -101,37 +76,18 @@ class AuthController extends Controller
         $requestToken = $request->bearerToken();
 
         if (explode(".", $token)[1] != explode(".", $requestToken)[1]){
-            return response()->json([
-                'status' => 401,
-                'error' => ['token' => 'Invalid Token'],
-            ], 401);
+
+            return response()->json($this->handleResponseError(401, ['token' => 'Invalid Token']), 401);
         }
 
         Auth::logout();
-        return response()->json([
-            'status' => 200,
-            'meta' => [
-                'count' => 0,
-                'entityType' => 'users',
-            ],
-            'data' => null,
-        ]);
+
+        return response()->json($this->handleResponseSuccess(0, 'users', null));
     }
 
     public function refresh()
     {
-        return response()->json([
-            'status' => 200,
-            'meta' => [
-                'count' => 1,
-                'entityType' => 'users',
-            ],
-            'data' => Auth::user(),
-            'authorisation' => [
-                'token' => Auth::refresh(),
-                'type' => 'bearer',
-            ]
-        ]);
+        return response()->json($this->handleResponseSuccess(1, 'users',  Auth::user(), Auth::refresh()));
     }
 
 }

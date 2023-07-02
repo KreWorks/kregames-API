@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Cms;
 
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use App\Http\Controllers\Controller;
 use App\Models\Image;
 use App\Traits\ImageableTrait;
@@ -23,7 +24,20 @@ class ImageController extends Controller
      */
     public function index()
     {
-        //
+        $images = Image::orderBy('created_at')->get();
+        
+        return response()->json($this->handleListResponseSuccess(
+            count($images), 
+            'images', 
+            $images, 
+            [
+                [ 'entityKey' => 'path', 'type' => 'text', 'value' => 'Elérési út'], 
+                [ 'entityKey' => 'type', 'type' => 'text', 'value' => 'Típus'], 
+                [ 'entityKey' => 'parentString', 'type' => 'text', 'value' => 'Szülő']
+            ], 
+            'id', 
+            'path'
+        ));
     }
 
     /**
@@ -36,6 +50,10 @@ class ImageController extends Controller
     {
         $parent = $this->validateParent($request);
 
+        if (get_class($parent) == 'Illuminate\Http\JsonResponse') {
+            return $parent;
+        }
+
         try {
             $validatedData = $request->validate([
                 'file' => 'required|file',
@@ -43,12 +61,21 @@ class ImageController extends Controller
                 'title' => 'string',
             ]);
         } catch(ValidationException $ve) {
-            
-            return response()->json([
-                'status' => 400,
-                'error' => $ve->errors()
-            ], 400);
+
+            return response()->json(
+                $this->handleResponseError(400, $ve->errors()),
+                400
+            );
         }
+
+        if (!$this->validateImageType($request->get('type')))
+        {
+            return response()->json(
+                $this->handleResponseError(404, ['type' => 'Invalid image type']), 
+                404
+            );
+        }
+
         $path = $this->handleImage($request, $parent);
         
         $image = Image::create([
@@ -59,26 +86,24 @@ class ImageController extends Controller
             'title' => $request->title,
         ]);
 
-        return response()->json([
-            'status' => 200,
-            'meta' => [
-                'count' => 1,
-                'entityType' => 'images',
-            ],
-            'data' => $image
-        ]);
-
+        return response()->json(
+            $this->handleResponseSuccess(1, 'images', $image)
+        );
     }
 
     /**
      * Display the specified resource.
      *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @param  uuid  $id
+     * @return \Illuminate\Http\JsonResponse
      */
     public function show($id)
     {
-        //
+        $image = Image::find($id);
+        
+        $resp = $this->handleEntityExist($image, 'images', 'image');
+
+        return response()->json($resp, $resp['status']);
     }
 
     /**
@@ -90,44 +115,116 @@ class ImageController extends Controller
      */
     public function update(Request $request, $id)
     {
-        //
+        $image = Image::find($id);
+        
+        $resp = $this->handleEntityExist($image, 'images', 'image');
+        if ($resp['status'] != 200 ) {
+            
+            return response()->json($resp, $resp['status']);
+        }
+        
+        // Parameters
+        $validationRules = [];
+        if ($request->get('title')) {
+            $image->title = $request->title;
+            $validationRules['title'] = 'string';
+        }
+        
+        if($request->get('type')) {
+            if (!$this->validateImageType($request->get('type')))
+            {
+                return response()->json(
+                    $this->handleResponseError(404, ['type' => 'Invalid image type']), 
+                    404
+                );
+            }
+            $image->type = $request->type;
+            $validationRules['type'] = 'required|string|max:50';
+        }
+        
+        if ($request->file('file')) {
+            $validationRules['file'] = 'required|file';
+        }
+        
+        try {
+            $request->validate($validationRules);
+        } catch(ValidationException $ve) {
+            
+            return response()->json(
+                $this->handleResponseError(400, $ve->errors()), 
+                400
+            );
+        }
+        
+        $parent = $image->imageable;
+        if ($request->has('imageable_id') && 
+            $request->get('imageable_id') != $image->imageable->id) {
+            $parent = $this->validateParent($request);
+
+            if (get_class($parent) == 'Illuminate\Http\JsonResponse') {
+                return $parent;
+            }
+            
+            $iamge->imageabble_type = get_class($parent);
+            $image->imageable_id = $parent->id;
+        }
+
+        if ($request->file('file')) {
+            $path = $this->handleImage($request, $parent);
+            $image->path = $path;
+        }
+
+        $image->save();
+
+        return response()->json($this->handleResponseSuccess(1, 'images', $image));
+
     }
 
     /**
      * Remove the specified resource from storage.
      *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @param  uuid  $id
+     * @return \Illuminate\Http\JsonResponse
      */
     public function destroy($id)
     {
-        //
+        $image = Image::find($id);
+
+        $resp = $this->handleEntityExist($image, 'images', 'image');
+        if ($resp['status'] != 200 ) {
+            
+            return response()->json($resp, $resp['status']);
+        }
+
+        $image->delete();
+
+        return response()->json($this->handleResponseSuccess(0, 'images', null));
     }
 
     protected function validateParent(Request $request) 
     {
         try {
             $validatedData = $request->validate([
-                'file' => 'required|file',
-                'type' => 'required|string|max:50'
+                'imageable_type' => 'required|string',
+                'imageable_id' => 'required|uuid'
             ]);
-            $parent = ($request->imageable_type)::find($request->imageable_id)->first();
-
+            
+            $parent = ($request->imageable_type)::find($request->imageable_id);
+    
             if (!$parent) {
-                return response()->json([
-                    'status' => 400,
-                    'error' => ["parent" => "Parent entity not found."]
-                ], 400);
+                return response()->json(
+                    $this->handleResponseError(400, ["parent" => "Parent entity not found."]), 
+                    400
+                );
             }
 
             return $parent;
 
         } catch(ValidationException $ve) {
-            
-            return response()->json([
-                'status' => 400,
-                'error' => $ve->errors()
-            ], 400);
+            return response()->json(
+                $this->handleResponseError(400, $ve->errors()),
+                400
+            );
         }
     }
 

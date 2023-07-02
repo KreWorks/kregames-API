@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Database\Factories\GameFactory;
 use App\Models\_Base as Base;
 
 class Game extends Base

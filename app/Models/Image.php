@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Database\Factories\ImageFactory;
 use App\Models\_Base as Base;
 use App\Enums\ImageTypeEnum;
 
@@ -32,6 +33,7 @@ class Image extends Base
         'Game' => Game::class,
         'User' => User::class
     ];
+
 
     public static function getImageables()
     {
