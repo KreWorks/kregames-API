@@ -8,7 +8,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 use Database\Factories\UserFactory;
+use App\Enums\ImageTypeEnum;
 use App\Models\_Base as Base;
+use App\Models\Image;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -86,5 +88,21 @@ class User extends Authenticatable implements JWTSubject
     public function games()
     {
         return $this->hasMany(Game::class);
+    }
+
+    /**
+     * The images of the user
+     */
+    public function images()
+    {
+        return $this->morphMany(Image::class, 'imageable');
+    }
+
+    /**
+     * The avatar image of the user (expected to be only 1)
+     */
+    public function avatar()
+    {
+        return $this->morphOne(Image::class, 'imageable')->where('type', ImageTypeEnum::AVATAR);
     }
 }

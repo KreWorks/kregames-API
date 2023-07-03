@@ -83,13 +83,13 @@ class GameController extends Controller
         
         $path = $this->handleImage($request, $game, 'icon');
         
-        $image = Image::create([
+        $image = $game->images()->create(
+        [
             'type' => ImageTypeEnum::ICON,
-            'imageabble_type' => get_class($game),
-            'imageable_id' => $game->id,
             'path' => $path,
             'title' => $game->slug." icon",
         ]);
+
         
         $user->games()->save($game);
 
@@ -154,10 +154,9 @@ class GameController extends Controller
 
             $path = $this->handleImage($request, $game, 'icon');
         
-            $image = Image::create([
-                'type' => ImageTypeEnum::ICON,
-                'imageabble_type' => get_class($game),
-                'imageable_id' => $game->id,
+            $image = $game->icon;
+
+            $image->update([
                 'path' => $path,
                 'title' => $game->slug." icon",
             ]);

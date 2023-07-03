@@ -74,10 +74,9 @@ class UserController extends Controller
 
         $path = $this->handleImage($request, $user, 'avatar');
         
-        $image = Image::create([
+        $image = $user->images()->create(
+        [
             'type' => ImageTypeEnum::AVATAR,
-            'imageabble_type' => get_class($user),
-            'imageable_id' => $user->id,
             'path' => $path,
             'title' => $request->username." avatar",
         ]);
@@ -159,10 +158,9 @@ class UserController extends Controller
 
             $path = $this->handleImage($request, $user, 'avatar');
         
-            $image = Image::create([
-                'type' => ImageTypeEnum::AVATAR,
-                'imageabble_type' => get_class($user),
-                'imageable_id' => $user->id,
+            $image = $user->avatar;
+
+            $image->update([
                 'path' => $path,
                 'title' => $user->username." avatar",
             ]);

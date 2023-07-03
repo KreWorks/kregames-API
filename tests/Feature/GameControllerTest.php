@@ -6,6 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
+use App\Enums\ImageTypeEnum;
 use App\Models\User; 
 use App\Models\Game;
 
@@ -208,6 +209,13 @@ class GameControllerTest extends TestCase
         $game = Game::factory(Game::class)->create(
             $this->getGameData('update', true)
         );
+
+        $game->images()->create([
+            'type' => ImageTypeEnum::ICON, 
+            'path' => 'icon_'.$game->slug.".jpg",
+            'title' => $game->slug. " icon"
+        ]);
+
         $gameId = $game->id->ToString();
 
         $response = $this->withHeaders([

@@ -7,7 +7,9 @@ use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
+use App\Enums\ImageTypeEnum;
 use App\Models\User;
+use App\Models\Image;
 
 class UserControllerTest extends TestCase
 {
@@ -63,6 +65,9 @@ class UserControllerTest extends TestCase
             $this->getUserData('fancy', false, true, true)
         );
 
+        $user = User::find($response->getData()->data->id);
+
+        $this->assertEquals(get_class($user->avatar), Image::class);
         $this->validateSuccessResponse($response, 'users', 1);
         $response->assertJsonPath('data.username','fancyuser');
     }
@@ -179,6 +184,12 @@ class UserControllerTest extends TestCase
             $user = User::factory(User::class)->create(
                 $this->getUserData("list".$i, true, false)
             );
+
+            $user->images()->create([
+                'type' => ImageTypeEnum::AVATAR,
+                'path' => 'bla.jpg',
+                'title' => $user->username. " avatar"
+            ]);
         }
 
         $response = $this->withHeaders([
@@ -230,6 +241,13 @@ class UserControllerTest extends TestCase
         $user = User::factory(User::class)->create(
             $this->getUserData("update", true, false)
         );
+
+        $user->images()->create([
+            'type' => ImageTypeEnum::AVATAR,
+            'path' => 'bla.jpg',
+            'title' => $user->username. " avatar"
+        ]);
+
         $userId = $user->id->ToString();
 
         $response = $this->withHeaders([
@@ -237,6 +255,8 @@ class UserControllerTest extends TestCase
         ])->patch('/api/cms/users/'.$userId, [
             'avatar' => UploadedFile::fake()->image('avatar.jpg')
         ]);
+
+        $this->assertEquals(count($user->images), 1);
 
         $this->validateSuccessResponse($response, 'users', 1);
     }
