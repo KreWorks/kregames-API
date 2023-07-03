@@ -5,11 +5,173 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
+use App\Enums\ImageTypeEnum;
 use App\Models\User;
+use App\Models\Image;
 
 class UserControllerTest extends TestCase
 {
+    /**
+     * UserController - User show
+     * Success
+     */
+    public function testUserShow()
+    {
+        $token = $this->getApiToken();
+
+        $user = User::factory(User::class)->create($this->getUserData('show', true, false));
+
+        $userId = $user->id->ToString();
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->get('/api/cms/users/'.$userId);
+
+        $response->assertJsonPath('data.username', 'showuser');
+        $response->assertJsonPath('data.id', $userId);
+        $this->validateSuccessResponse($response, 'users', 1);
+    }
+
+    /**
+     * UserController - User show
+     * Error - user not found
+     */
+    public function testUserShowNotFound()
+    {
+        $token = $this->getApiToken();
+
+        $user = User::factory(User::class)->create($this->getUserData("show", true, false));
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->get('/api/cms/users/'."abc-abc-abc");
+
+        $this->validateErrorResponse($response, ['user'], 404);
+    }
+
+    /**
+     * UserController - Create User 
+     * Success
+     */
+    public function testUserCreate()
+    {
+        $token = $this->getApiToken();
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->post('/api/cms/users', 
+            $this->getUserData('fancy', false, true, true)
+        );
+
+        $user = User::find($response->getData()->data->id);
+
+        $this->assertEquals(get_class($user->avatar), Image::class);
+        $this->validateSuccessResponse($response, 'users', 1);
+        $response->assertJsonPath('data.username','fancyuser');
+    }
+
+    /**
+     * UserController - Create user 
+     * Error - missing image 
+     */
+    public function testUserCreateMissingImage()
+    {
+        $token = $this->getApiToken();
+
+        $data = $this->getUserData('fancy', false, true);
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->post('/api/cms/users', 
+            $data
+        );
+        
+        $this->validateErrorResponse($response, ['avatar'], 400);
+    }
+
+    /**
+     * UserController - Create user 
+     * Error - duplicate nickanme 
+     */
+    public function testUserCreateDuplicateNickname()
+    {
+        $token = $this->getApiToken();
+
+        $data = $this->getUserData('fancy', false, true, true);
+        $data['username'] = 'admin';
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->post('/api/cms/users', 
+            $data
+        );
+        
+        $this->validateErrorResponse($response, ['username'], 400);
+    }
+
+    /**
+     * UserController - Create user 
+     * Error - duplicate email
+     */
+    public function testUserCreateDuplicateEmail()
+    {
+        $token = $this->getApiToken();
+
+        $data = $this->getUserData('fancy', false, true, true);
+        $data['email'] = 'admin@admin.hu';
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->post('/api/cms/users', 
+            $data
+        );
+        
+        $this->validateErrorResponse($response, ['email'], 400);
+    }
+
+    /**
+     * UserController - Create user 
+     * Error - password missmatch
+     */
+    public function testUserCreatePasswordMissmatch()
+    {
+        $token = $this->getApiToken();
+
+        $data = $this->getUserData('fancy', false, true, true);
+        $data['confirmPassword'] = 'notfancy';
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->post('/api/cms/users', 
+            $data
+        );
+
+        $this->validateErrorResponse($response, ['confirmPassword'], 400);
+    }
+
+    /**
+     * UserController - Create User 
+     * Error - short password
+     */
+    public function testUserCreateShortPassword()
+    {
+        $token = $this->getApiToken();
+
+        $data = $this->getUserData('fancy', false, true, true);
+        $data['password'] = 'pwd';
+        $data['confirmPassword'] = "pwd";
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->post('/api/cms/users', 
+            $data
+        );
+
+        $this->validateErrorResponse($response, ['password'], 400);
+    }
+
     /**
      * UserContrller - User List 
      * Success
@@ -19,11 +181,14 @@ class UserControllerTest extends TestCase
         $token = $this->getApiToken();
 
         for($i = 1; $i <= 5; $i++) {
-            $user = User::factory(User::class)->create([
-                'email' => 'list'.$i.'@mail.com',
-                'name' => "List User ".$i,
-                'username' => 'listuser'.$i,
-                'password' => Hash::make('password'),
+            $user = User::factory(User::class)->create(
+                $this->getUserData("list".$i, true, false)
+            );
+
+            $user->images()->create([
+                'type' => ImageTypeEnum::AVATAR,
+                'path' => 'bla.jpg',
+                'title' => $user->username. " avatar"
             ]);
         }
 
@@ -38,185 +203,16 @@ class UserControllerTest extends TestCase
     }
 
     /**
-     * UserController - User show
-     * Success
-     */
-    public function testUserShow()
-    {
-        $token = $this->getApiToken();
-
-        $user = User::factory(User::class)->create([
-            'email' => 'showuser1@mail.com',
-            'name' => "Show User 1",
-            'username' => 'listuser1',
-            'password' => Hash::make('password'),
-        ]);
-
-        $userId = $user->id->ToString();
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '. $token,
-        ])->get('/api/cms/users/'.$userId);
-
-        $response->assertJsonPath('data.username', 'listuser1');
-        $response->assertJsonPath('data.id', $userId);
-        $this->validateSuccessResponse($response, 'users', 1);
-    }
-
-    /**
-     * UserController - User show
-     * Error - user not found
-     */
-    public function testUserShowNotFound()
-    {
-        $token = $this->getApiToken();
-
-        $user = User::factory(User::class)->create([
-            'email' => 'showuser2@mail.com',
-            'name' => "Show User 2",
-            'username' => 'listuser2',
-            'password' => Hash::make('password'),
-        ]);
-
-        $userId = $user->id->ToString();
-        $userId = substr($userId, 0, -2)."bc";
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '. $token,
-        ])->get('/api/cms/users/'.$userId);
-
-        $this->validateErrorResponse($response, ['user'], 404);
-    }
-
-    /**
-     * Create User 
-     *
-     * @return void
-     */
-    public function testUserCreate()
-    {
-        $token = $this->getApiToken();
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '. $token,
-        ])->post('/api/cms/users', [
-            'name' => 'Fancy user',
-            'username' => 'fancyusername',
-            'email' => 'fancy@mail.hu',
-            'password' => ('password'),
-            'confirmPassword' => 'password'
-        ]);
-
-        $response->assertStatus(200);
-        $response->assertJsonStructure([
-            'status',
-            'meta' => ['count', 'entityType'],
-            'data'
-        ]);
-        $response->assertJsonPath('meta.count',1);
-        $response->assertJsonPath('data.username','fancyusername');
-    }
-
-    /**
-     * Create user with errors 
-     */
-    public function testUserCreateDuplicateNickname()
-    {
-        $token = $this->getApiToken();
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '. $token,
-        ])->post('/api/cms/users', [
-            'name' => 'Fancy user',
-            'username' => 'fancyusername',
-            'email' => 'fancy2@mail.hu',
-            'password' => ('password'),
-            'confirmPassword' => 'password'
-        ]);
-        
-        $response->assertJsonStructure([
-            'status',
-            'error' => ['username']
-        ]);
-        $response->assertStatus(400);
-    }
-
-    public function testUserCreateDuplicateEmail()
-    {
-        $token = $this->getApiToken();
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '. $token,
-        ])->post('/api/cms/users', [
-            'name' => 'Fancy user',
-            'username' => 'fancyusername2',
-            'email' => 'fancy@mail.hu',
-            'password' => ('password'),
-            'confirmPassword' => 'password'
-        ]);
-        
-        $response->assertJsonStructure([
-            'status',
-            'error' => ['email']
-        ]);
-        $response->assertStatus(400);
-    }
-
-    public function testUserCreatePasswordMissmatch()
-    {
-        $token = $this->getApiToken();
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '. $token,
-        ])->post('/api/cms/users', [
-            'name' => 'Fancy user',
-            'username' => 'fancyusername3',
-            'email' => 'fancy3@mail.hu',
-            'password' => ('password'),
-            'confirmPassword' => 'password123'
-        ]);
-
-        $response->assertJsonStructure([
-            'status',
-            'error' => ['confirmPassword']
-        ]);
-        $response->assertStatus(400);
-    }
-
-    public function testUserCreateShortPassword()
-    {
-        $token = $this->getApiToken();
-
-        $response = $this->withHeaders([
-            'Authorization' => 'Bearer '. $token,
-        ])->post('/api/cms/users', [
-            'name' => 'Fancy user',
-            'username' => 'fancyusername4',
-            'email' => 'fancy4@mail.hu',
-            'password' => ('pwd'),
-            'confirmPassword' => 'pwd'
-        ]);
-
-        $response->assertJsonStructure([
-            'status',
-            'error' => ['password']
-        ]);
-        $response->assertStatus(400);
-    }
-
-    /**
-     * Update user
+     * UserController - Update user
+     * Success - user data update
      */
     public function testUserUpdate()
     {
         $token = $this->getApiToken();
 
-        $user = User::factory(User::class)->create([
-            'email' => 'update@mail.com',
-            'name' => "Update User",
-            'username' => 'updateuser',
-            'password' => Hash::make('password'),
-        ]);
+        $user = User::factory(User::class)->create(
+            $this->getUserData("update", true, false)
+        );
         $userId = $user->id->ToString();
 
         $response = $this->withHeaders([
@@ -231,19 +227,51 @@ class UserControllerTest extends TestCase
         $response->assertJsonPath('data.username','updateuser2');
         $response->assertJsonPath('data.name','Update User 2');
         $response->assertJsonPath('data.email','update2@mail.hu');
-        $response->assertStatus(200);
+        $this->validateSuccessResponse($response, 'users', 1);
     }
 
+    /**
+     * UserController - Update user
+     * Success - user data update
+     */
+    public function testUserUpdateImage()
+    {
+        $token = $this->getApiToken();
+
+        $user = User::factory(User::class)->create(
+            $this->getUserData("update", true, false)
+        );
+
+        $user->images()->create([
+            'type' => ImageTypeEnum::AVATAR,
+            'path' => 'bla.jpg',
+            'title' => $user->username. " avatar"
+        ]);
+
+        $userId = $user->id->ToString();
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->patch('/api/cms/users/'.$userId, [
+            'avatar' => UploadedFile::fake()->image('avatar.jpg')
+        ]);
+
+        $this->assertEquals(count($user->images), 1);
+
+        $this->validateSuccessResponse($response, 'users', 1);
+    }
+
+    /**
+     * UserController - Update user 
+     * Success - only password
+     */
     public function testUserUpdateOnlyPassword()
     {
         $token = $this->getApiToken();
 
-        $user = User::factory(User::class)->create([
-            'email' => 'update@mail.com',
-            'name' => "Update User",
-            'username' => 'updateuser',
-            'password' => Hash::make('password'),
-        ]);
+        $user = User::factory(User::class)->create(
+            $this->getUserData("update", true, false)
+        );
         $userId = $user->id->ToString();
 
         $response = $this->withHeaders([
@@ -254,69 +282,88 @@ class UserControllerTest extends TestCase
         ]);
 
         $response->assertJsonPath('data.id',$userId);
-        $response->assertStatus(200);
+        $this->validateSuccessResponse($response, 'users', 1);
     }
 
     /**
-     * User update with errors 
+     * UserController - update user
+     * Error - user not found
+     */
+    public function testUserUpdateNotFound()
+    {
+        $token = $this->getApiToken();
+
+        $user = User::factory(User::class)->create(
+            $this->getUserData("update", true, false)
+        );
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->patch('/api/cms/users/'."aa-bb-cc", [
+            'name' => 'Fancy user',
+            'username' => 'admin',
+        ]);
+
+        $this->validateErrorResponse($response, ['user'], 404);
+    }
+
+    /**
+     * UserController - update user
+     * Error - duplicate nickname 
      */
     public function testUserUpdateDuplicateNickname()
     {
         $token = $this->getApiToken();
 
-        $user = User::factory(User::class)->create([
-            'email' => 'error1@mail.com',
-            'password' => Hash::make('password'),
-        ]);
+        $user = User::factory(User::class)->create(
+            $this->getUserData("update", true, false)
+        );
         $userId = $user->id->ToString();
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer '. $token,
         ])->patch('/api/cms/users/'.$userId, [
             'name' => 'Fancy user',
-            'username' => 'testuser',
+            'username' => 'admin',
         ]);
 
-        $response->assertJsonStructure([
-            'status',
-            'error' => ['username']
-        ]);
-        $response->assertStatus(400);
+        $this->validateErrorResponse($response, ['username'], 400);
     }
 
+    /**
+     * UserController - update user 
+     * Error - duplicate mail
+     */
     public function testUserUpdateDuplicateEmail()
     {
         $token = $this->getApiToken();
 
-        $user = User::factory(User::class)->create([
-            'email' => 'error2@mail.com',
-            'password' => Hash::make('password'),
-        ]);
+        $user = User::factory(User::class)->create(
+            $this->getUserData("update", true, false)
+        );
         $userId = $user->id->ToString();
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer '. $token,
         ])->patch('/api/cms/users/'.$userId, [
             'name' => 'Fancy user',
-            'email' => 'fancy@mail.hu',
+            'email' => 'admin@admin.hu',
         ]);
 
-        
-        $response->assertJsonStructure([
-            'status',
-            'error' => ['email']
-        ]);
-        $response->assertStatus(400);
+        $this->validateErrorResponse($response, ['email'], 400);
     }
 
+    /**
+     * UserController - update user 
+     * Error - password missmatch
+     */
     public function testUserUpdatePasswordMissmatch()
     {
         $token = $this->getApiToken();
 
-        $user = User::factory(User::class)->create([
-            'email' => 'error3@mail.com',
-            'password' => Hash::make('password'),
-        ]);
+        $user = User::factory(User::class)->create(
+            $this->getUserData("update", true, false)
+        );
         $userId = $user->id->ToString();
 
         $response = $this->withHeaders([
@@ -326,22 +373,20 @@ class UserControllerTest extends TestCase
             'confirmPassword' => 'masikjelszo',
         ]);
 
-        
-        $response->assertJsonStructure([
-            'status',
-            'error' => ['confirmPassword']
-        ]);
-        $response->assertStatus(400);
+        $this->validateErrorResponse($response, ['confirmPassword'], 400);
     }
 
+    /**
+     * UserController - Update user
+     * Error - short password 
+     */
     public function testUserUpdateShortPassword()
     {
         $token = $this->getApiToken();
 
-        $user = User::factory(User::class)->create([
-            'email' => 'error4@mail.com',
-            'password' => Hash::make('password'),
-        ]);
+        $user = User::factory(User::class)->create(
+            $this->getUserData("update", true, false)
+        );
         $userId = $user->id->ToString();
 
         $response = $this->withHeaders([
@@ -351,25 +396,20 @@ class UserControllerTest extends TestCase
             'confirmPassword' => 'pwd',
         ]);
 
-        
-        $response->assertJsonStructure([
-            'status',
-            'error' => ['password']
-        ]);
-        $response->assertStatus(400);
+        $this->validateErrorResponse($response, ['password'], 400);
     }
 
     /**
-     * User delete
+     * UserController - User delete
+     * Success 
      */
     public function testUserDelete() 
     {
         $token = $this->getApiToken();
 
-        $user = User::factory(User::class)->create([
-            'email' => 'delete@mail.com',
-            'password' => Hash::make('password'),
-        ]);
+        $user = User::factory(User::class)->create(
+            $this->getUserData("delete", true, false)
+        );
         $userId = $user->id->ToString();
 
         $response = $this->withHeaders([
@@ -378,6 +418,47 @@ class UserControllerTest extends TestCase
 
         
         $response->assertJsonPath('data',null);
-        $response->assertStatus(200);
+        $this->validateSuccessResponse($response, 'users', 0);
+    }
+
+    /**
+     * UserController - User delete
+     * Error - missing user 
+     */
+    public function testUserDeleteMissingUser()
+    {
+        $token = $this->getApiToken();
+
+        $response = $this->withHeaders([
+            'Authorization' => 'Bearer '. $token,
+        ])->delete('/api/cms/users/'."aa-bb-cc");
+
+        $this->validateErrorResponse($response, ['user'], 404);
+    }
+
+    /**
+     * Create a user 
+     */
+    private function getUserData($name, $isFactory = false, $needConfirm = false, $needFile = false)
+    {
+        $data = [
+            'email' => $name.'user@mail.com',
+            'name' => ucwords($name) . " User",
+            'username' => $name . 'user'
+        ];
+        $password = md5($name);
+        if ($isFactory) {
+            $password = Hash::make($password);
+        }
+        $data['password'] = $password;
+        if ($needConfirm) {
+            $data['confirmPassword'] = $password;
+        }
+
+        if ($needFile) {
+            $data['avatar'] = UploadedFile::fake()->image('avatar.jpg');
+        }
+
+        return $data;
     }
 }

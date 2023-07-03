@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Database\Factories\GameFactory;
+use App\Enums\ImageTypeEnum;
 use App\Models\_Base as Base;
 
 class Game extends Base
@@ -18,6 +20,11 @@ class Game extends Base
         'visible',
     ];
 
+    public function getDeleteStringAttribute():string
+    {
+        return $this->name;
+    }
+    
     /** 
      * THe user this game blongs to
      */
@@ -26,8 +33,19 @@ class Game extends Base
         return $this->belongsTo(User::class);
     }
 
-    public function getDeleteStringAttribute():string
+    /**
+     * The images of the game
+     */
+    public function images()
     {
-        return $this->name;
+        return $this->morphMany(Image::class, 'imageable');
+    }
+
+    /**
+     * The icon image of the game (expected to be only 1)
+     */
+    public function icon()
+    {
+        return $this->morphOne(Image::class, 'imageable')->where('type', ImageTypeEnum::ICON);
     }
 }
