@@ -9,9 +9,6 @@ use App\Enums\ImageTypeEnum;
 
 class Image extends Base
 {
-    use HasFactory;
-
-    public $incrementing = false;
     /**
      * The attributes that are mass assignable.
      *
