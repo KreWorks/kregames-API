@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Database\Factories\GameFactory;
 use App\Enums\ImageTypeEnum;
 use App\Models\_Base as Base;
 
@@ -47,5 +46,13 @@ class Game extends Base
     public function icon()
     {
         return $this->morphOne(Image::class, 'imageable')->where('type', ImageTypeEnum::ICON);
+    }
+
+    /**
+     * The links of the game
+     */
+    public function links()
+    {
+        return $this->morphMany(Link::class, 'linkable');
     }
 }

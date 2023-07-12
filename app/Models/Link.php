@@ -3,9 +3,8 @@
 namespace App\Models;
 
 use App\Models\_Base as Base;
-use App\Enums\ImageTypeEnum;
 
-class Image extends Base
+class Link extends Base
 {
     /**
      * The attributes that are mass assignable.
@@ -13,15 +12,16 @@ class Image extends Base
      * @var array<int, string>
      */
     protected $fillable = [
-        'type',
-        'path',
-        'title',
-        'imageable_type',
-        'imageable_id'
+        'linktype_id',
+        'linkable_type',
+        'linkable_id',
+        'link',
+        'display_text',
+        'visible',
     ];
 
     protected $casts = [
-        'type' => ImageTypeEnum::class
+        'linktype' => LinkTypes::class
     ];
 
     public static $morphs = [
@@ -29,26 +29,30 @@ class Image extends Base
         'User' => User::class
     ];
 
-
-    public static function getImageables()
+    public function getDeleteStringAttribute():string
     {
-        $imageables = []; 
-        foreach(Image::$morphs as $key => $class)
+        return $this->link;
+    }
+
+    public static function getLinkables()
+    {
+        $linkables = []; 
+        foreach(Link::$morphs as $key => $class)
         {
-            $imageables[$key] = [
+            $linkables[$key] = [
                 'css-class' => strtolower($key), 
                 'model' => $class,
                 'items' => $class::all()
             ];
         }
 
-        return $imageables;
+        return $linkables;
     }
 
     /**
      * Get the parent imageable model (jam or game).
      */
-    public function imageable()
+    public function linkable()
     {
         return $this->morphTo();
     }
@@ -61,13 +65,11 @@ class Image extends Base
         ];
     }
 
-    public function getDeleteStringAttribute(): string
+    /** 
+     * THe linktpye this link blongs to
+     */
+    public function linktype()
     {
-        return $this->path . " (ID: ".$this->id.")";
-    }
-
-    public function getParentAttribute()
-    {
-        return $this->imageable_type;
+        return $this->belongsTo(LinkType::class);
     }
 }

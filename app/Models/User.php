@@ -9,8 +9,6 @@ use Illuminate\Notifications\Notifiable;
 use PHPOpenSourceSaver\JWTAuth\Contracts\JWTSubject;
 use Database\Factories\UserFactory;
 use App\Enums\ImageTypeEnum;
-use App\Models\_Base as Base;
-use App\Models\Image;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -104,5 +102,13 @@ class User extends Authenticatable implements JWTSubject
     public function avatar()
     {
         return $this->morphOne(Image::class, 'imageable')->where('type', ImageTypeEnum::AVATAR);
+    }
+
+    /**
+     * The links of the user
+     */
+    public function links()
+    {
+        return $this->morphMany(Link::class, 'linkable');
     }
 }

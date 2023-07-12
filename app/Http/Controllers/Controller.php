@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
+use \Illuminate\Http\Request;
 use Illuminate\Routing\Controller as BaseController;
 
 class Controller extends BaseController
@@ -50,7 +51,6 @@ class Controller extends BaseController
         return $responseData;
     }
 
-    
     protected function handleEntityExist($entity, $entityType, $entityNameOnError)
     {
         if (!$entity) {
@@ -71,5 +71,9 @@ class Controller extends BaseController
         ];
     }
 
+    protected function isAttributeChanged(Request $request, $attribute, $entity)
+    {
+        return $request->has($attribute) && $request->get($attribute) != $entity->$attribute;
+    }
 
 }
