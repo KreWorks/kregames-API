@@ -80,7 +80,7 @@ class ImageController extends Controller
         
         $image = Image::create([
             'type' => $request->type,
-            'imageabble_type' => get_class($parent),
+            'imageable_type' => get_class($parent),
             'imageable_id' => $parent->id,
             'path' => $path,
             'title' => $request->title,
@@ -165,7 +165,7 @@ class ImageController extends Controller
                 return $parent;
             }
             
-            $iamge->imageabble_type = get_class($parent);
+            $image->imageable_type = get_class($parent);
             $image->imageable_id = $parent->id;
         }
 

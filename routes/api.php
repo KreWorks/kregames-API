@@ -7,6 +7,7 @@ use App\Http\Controllers\Cms\UserController;
 use App\Http\Controllers\Cms\GameController;
 use App\Http\Controllers\Cms\ImageController;
 use App\Http\Controllers\Cms\LinkTypeController;
+use App\Http\Controllers\Cms\LinkController;
 
 /** Routes for CMS login */
 Route::controller(AuthController::class)->group(function () {
@@ -23,6 +24,7 @@ Route::prefix('cms')->middleware(['api', 'cors'])->group(function() {
     Route::resource('games', GameController::class)->except(['create', 'edit']);
     Route::resource('images', ImageController::class)->except(['create', 'edit']);
     Route::resource('linktypes', LinkTypeController::class)->except(['create', 'edit']);
+    Route::resource('links', LinkController::class)->except(['create', 'edit']);
 });
 
 /**

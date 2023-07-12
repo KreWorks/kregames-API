@@ -24,4 +24,14 @@ class LinkType extends Base
     {
         return $this->name;
     }
+
+    /**
+     * The links that has this linktype
+     */
+    public function links()
+    {
+        return $this->hasMany(Link::class);
+    }
+
+
 }
